@@ -6,9 +6,9 @@ var expect = require('expect.js');
 var users = new Users();
 var mongo = require('mocha-mongo')('mongodb://localhost');
 var url = "mongodb://Andrew:twitter@ds053469.mongolab.com:53469/tweets";
+var UserCollection = require('../models/user_collection.js');
 
-
-  var ready, name, clean, db;
+var ready, name, clean, db;
 
 describe('setup database and random name', function () {
   before(function () {
@@ -55,6 +55,7 @@ describe('Testing Users For Location Name', function () {
       db.collection('user_db').insert({ name: 'Tommy', collection_name: 'collection_Tommy'}, done);
     });
   });
+
   it('should count the new insertion!', function () {
     ready(function (db, done) {
       db.collection('user_db').find().count(function (err, number) {
@@ -62,6 +63,7 @@ describe('Testing Users For Location Name', function () {
       });
     });
   });
+
   it('should add Tommies collection', function () {
     ready(function (db, done) {
       tommy = db.collection('user_db').findOne({name: 'Tommy'});
@@ -69,6 +71,7 @@ describe('Testing Users For Location Name', function () {
       expect(collection).to.eql('collection_Tommy');
     });
   });
+
   it('should add the tommy collection to the db', function () {
     ready(function (db, done) {
       var cursor = db.collection('collection_Tommy').find();
@@ -78,24 +81,72 @@ describe('Testing Users For Location Name', function () {
   });
 });
 
-var user;
-describe('Testing Existing Queries For Query Data', function () {
+var userCollection;
+var username = 'newUser';
 
-  before(function (db, done) {
-    var tweet = { id_str: 'Tweet From Apple!' };
-    user = new User({name: 'Tommy'});
+describe('A user collection should be created', function () {
+  before(function () {
+    userCollection = new UserCollection();
   });
 
-  describe('Testing Users For Location Name', function () {
-    ready(function (db, done) {
-
-      db.collection('collection_Tommy').insert(
-
+  after(function () {
+    describe('userCollection.add() complete', function () {
+      describe('userCollection.get()', function () {
+        it ('should retrieve a present user from the collection', function () {
+          ready(function (db, data) {
+            var userObj = userCollection.get(username);
+            assert(typeof userObj, 'object');
+            var doc = db.collection("collection_" + username).findOne();
+            var user2 = new User(doc);
+            expect(userObj).to.eql(user2);
+            done();
+          });
+        });
+        it ('should retrieve the user from the collection', function () {
+          ready(function (db, data) {
+            var userObj = userCollection.get(username);
+            expect(userObj).to.be(undefined);
+            done();
+          });
+        });
       });
     });
   });
 
+  describe('userCollection.add()', function () {
+    it ('should add a user to the database', function (done) {
+      ready(function (db, done) {
+        userCollection.add({name: username});
+        var doc = db.collection('user_db').findOne({name: username});
+        expect(doc).to.eql({name: username, collection_name: ("collection_" + username)})
+        done();
+      });
+    });
+  });
 });
+
+// describe('A user should be able to be created', function () {
+//   before(function ())
+
+// });
+
+// var user;
+// describe('Testing Existing Queries For Query Data', function () {
+
+//   before(function (db, done) {
+//     var tweet = { id_str: 'Tweet From Apple!' };
+//     user = new User({name: 'Tommy'});
+//     query = new Query({query: 'AAPL'})
+//   });
+
+//   describe('Testing Users For Location Name', function () {
+//     ready(function (db, done) {
+
+//       // user.insert();
+//     });
+//   });
+
+// });
 
 //   describe('Can view documents into database', function () {
 //     it('should display user_db', function () {
