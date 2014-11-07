@@ -1,4 +1,4 @@
-$( function() {
+$(function() {
   var FADE_TIME = 150; // ms
   var TYPING_TIMER_LENGTH = 400; // ms
   var COLORS = [
@@ -8,17 +8,12 @@ $( function() {
   ];
 
   // Initialize varibles
-
   var $window = $(window);
-
   var $usernameInput = $('.usernameInput'); // Input for username
-
   var $messages = $('.messages'); // Messages area
-
   var $inputMessage = $('.inputMessage'); // Input message input box
 
   var $loginPage = $('.login.page'); // The login page
-
   var $chatPage = $('.chat.page'); // The chatroom page
 
   // Prompt for setting a username
@@ -40,27 +35,18 @@ $( function() {
     log(message);
   }
 
-  function setPassword () {
-    sessionStorage.setInput('p', cleanInput($passwordInput.val().trim()));
-    if (sessionStorage.get('p') !== null || sessionStorage.get('p') !== undefined) {
-      $loginPage.fadeOut();
-      $chatPage.show();
-      $loginPage.off('click');
-      $passwordInput.css('display', 'inheirit');
-        // Tell the server your username
-      $currentInput = $usernameInput.focus();
-    }
-  }
-
   // Sets the client's username
   function setUsername () {
     username = cleanInput($usernameInput.val().trim());
 
     // If the username is valid
     if (username) {
-      $currentInput.fadeOut();
-      $passwordInput.show();
-      $currentInput = $passwordInput.focus();
+      $loginPage.fadeOut();
+      $chatPage.show();
+      $loginPage.off('click');
+      $currentInput = $inputMessage.focus();
+
+      // Tell the server your username
       socket.emit('add user', username);
     }
   }
@@ -155,7 +141,6 @@ $( function() {
     } else {
       $messages.append($el);
     }
-
     $messages[0].scrollTop = $messages[0].scrollHeight;
   }
 
@@ -254,6 +239,40 @@ $( function() {
   // Whenever the server emits 'new message', update the chat body
   socket.on('new message', function (data) {
     addChatMessage(data);
+  });
+
+  function consoleError(data) {
+    console.error(data);
+  }
+
+  function queryResponse(data) {
+    console.info("QUERY");
+    console.info(data);
+  }
+
+  function consoleDone() {
+     console.alert("QUERY DONE");
+  }
+
+  function logTweet(data) {
+    console.log(data);
+  }
+
+  socket.on('error', function(data) {
+    consoleError(data);
+  });
+
+  socket.on('query', function(data) {
+    queryResponse(data);
+  });
+
+  socket.on('done', function() {
+    consoleDone();
+  });
+
+
+  socket.on('tweet', function(data) {
+    logTweet(data);
   });
 
   // Whenever the server emits 'user joined', log it in the chat body
