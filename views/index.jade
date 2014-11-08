@@ -9,6 +9,12 @@ block content
         .form
           h3.title What's your nickname?
           input.usernameInput(type='text', maxlength='14')
+    script.
+      $('.expander').click(function (e) {
+        $(this).parent().children().css('display', inherit);
+      });
   script(src="https://code.jquery.com/jquery-1.10.2.min.js")
   script(src='/socket.io/socket.io.js')
+  script(src="/jquery.expander.js")
   script(src='/main.js')
+

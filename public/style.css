@@ -8,7 +8,25 @@ html {
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
 }
+pre {
 
+   background-color: ghostwhite;
+   border: 1px solid silver;
+   padding: 10px 20px;
+   margin: 20px;
+
+
+}
+
+.json-key {
+ color: brown;
+ }
+.json-value {
+ color: navy;
+ }
+.json-string {
+ color: olive;
+ }
 html, input {
   font-family:
     "HelveticaNeue-Light",
@@ -92,9 +110,10 @@ ul {
   display: none;
 }
 
+.content {display:none;}
 /* Font */
 
-.messages {
+.messages li.message {
   font-size: 150%;
 }
 
