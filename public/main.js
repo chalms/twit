@@ -36,11 +36,14 @@ library.json = {
   // Initialize varibles
   var $window = $(window);
   var $usernameInput = $('.usernameInput'); // Input for username
+  var $passwordInput = $('.passwordInput'); // Input for username
   var $messages = $('.messages'); // Messages area
   var $inputMessage = $('.inputMessage'); // Input message input box
 
   var $loginPage = $('.login.page'); // The login page
   var $chatPage = $('.chat.page'); // The chatroom page
+
+  var loggedIn = false;
 
   // Prompt for setting a username
   var username;
@@ -64,6 +67,11 @@ library.json = {
   // Sets the client's username
   function setUsername () {
     username = cleanInput($usernameInput.val().trim());
+    password = cleanInput($passwordInput.val().trim());
+
+    var loginInfo = { username: username, password: password };
+
+    socket.emit('login', loginInfo);
 
     // If the username is valid
     if (username) {

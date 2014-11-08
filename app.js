@@ -40,7 +40,7 @@ var nug = this;
 var usernames = {};
 var numUsers = 0;
 
-function qWrite(str, data) {
+function pipelineError(str, data) {
   console.log("Function => ");
   console.log(str);
   console.log("Arguements => ")
@@ -51,6 +51,28 @@ function qWrite(str, data) {
 function cBack(result) {
   console.log(result);
   qWrite('user', socket.user )
+}
+
+apis = {
+  twit: function (query, cb) {
+    twit.get('search/tweets', { q: query.q }, function (err, tweets) {
+      if (err)
+          cb(err, undefined);
+      else
+          if tweets
+              if (tweets.instanceof Object)
+                  console.log.call(nug, "Tweets => ");
+                  console.log.call(nug, _.keys(tweets));
+          else
+              console.log.call(nug, "Tweets is undefined");
+          cb(undefined, tweets);
+    });
+  }
+}
+
+Object.prototype.addSemaphore = function (cb) {
+  this.sem = this.sem ? this.sem : locks.createSemaphore(this.rawCollection.length);
+  this.sem.wait(cb);
 }
 
 io.on('connection', function (socket) {
@@ -75,6 +97,13 @@ io.on('connection', function (socket) {
         cb();
       }
 
+      function toObj(model, cb) {
+        if (err) cb(err, undefined);
+        var objModel = model.toObject();
+        delete objModel._id;
+        cb(undefined, objModel);
+      }
+
       function setupQuery(query, cb) {
         function getQueryObject(queryMongoose, cb) {
           console.log.call(nug, "Query as Mongoose => ");
@@ -88,6 +117,7 @@ io.on('connection', function (socket) {
           delete queryObj._id;
           cb(queryObj);
         }
+
 
         getQueryObject(query, function (queryObj) {
           remove_id(queryObj, function (queryObject) {
@@ -116,9 +146,11 @@ io.on('connection', function (socket) {
       function setup(queryData, callback) {
         socket.models.query = queryData;
         setup = locks.createSemaphore(2);
+
         userSetup(function () {
           setup.signal();
         });
+
         setupQuery(queryData, function (err, queryData) {
           if (err) {
             console.log.call(nug, "Set Query => error");
@@ -129,6 +161,7 @@ io.on('connection', function (socket) {
             setup.signal();
           }
         });
+
         setup.wait(function () {
           callback();
         });
@@ -139,15 +172,6 @@ io.on('connection', function (socket) {
         console.log.call(nug, "Query:");
         console.log.call(nug, queryDoc);
         cb(socket.models.query, user);
-      }
-
-      function getTweets(query, cb) {
-        twit.get('search/tweets', { q: query.q }, function (err, tweets) {
-          if (err) return qWrite('error', "Error retrieving tweets!");
-          console.log("Tweets => ")
-          console.log(tweets);
-          cb(tweets);
-        });
       }
 
       function saveQuery(query, cb) {
@@ -176,87 +200,107 @@ io.on('connection', function (socket) {
         });
       }
 
-      function checkTweetId(tweetDoc, cb2) {
-        if (!(tweetDoc._id)) throw "NO TWEET ID";
-        cb2(tweetDoc);
+      function find(model, modelClass, cb, cb1) {
+        return modelClass.find(model, function(err, dbModel) {
+          if (err)
+              return cb(err, undefined);
+          else if (dbModel)
+              return cb(undefined, dbModel);
+          else
+            if (cb1)
+                return cb1(model);
+            else
+                return cb(undefined, undefined);
+        });
       }
 
-      function setupTweet(rawTweet, cb) {
-        try {
-          checkTweetId(new Tweet(rawTweet), function (tweetDoc) {
-            socket.emit('tweet', tweetDoc);
-            cb(undefined, tweetDoc);
-          });
-        } catch (err) {
-          qWrite('error', err.toString());
-          return ;
-        }
+      function save(model, cb) {
+        model.save(function (err) {
+          if (err) return cb(err, undefined);
+          return cb(undefined, model);
+        });
+      }
+
+      function upsert(inputModel, modelClass, cb) {
+        if (!(inputModel._id))
+            return cb((new Error("NO ID IN UPSERT OF " + inputModel.toString())), undefined);
+        else
+            return toObj(inputModel, function (err, model) {
+              if (err) return cb(err, undefined);
+              return findModel(inputModel, modelClass, cb, function (model)) {
+                return saveModel(model, cb);
+              });
+            });
       }
 
       setup(new Query({q: data}), function () {
-
-        //
-        // check that querydoc was saved properly and add its id to the users arr
-        if (err) {
-          console.log.call(nug, err.toString());
-          throw err;
-        }
-
-        socket.models.user.queries.push(socket.models.query._id);
+        if (err)
+            console.log.call(nug, err.toString());
+            throw err;
+        else
+            socket.models.user.queries.push(socket.models.query._id);
 
         //
         // just log and query = queryDoc
         replaceQuery(socket.models.query, socket.models.user, function (query, user) {
 
           socket.models.query = query;
-          //
-          // run the twit api and return the object
-          getTweets(query, function (tweets) {
+          // "Error retrieving tweets!"
 
-            //
-            // create semaphore and other vars for context
-            if (!(this.sem)) this.sem = locks.createSemaphore(tweets["statuses"].length);
+          function getData(args) {
+            apis[args.service](args.query, function (err, data) {
+              if (err)
+                  args.done(err);
+              args.rawCollection = data;
+              return args.pipeline(args);
+            });
+          }
 
-            //
-            // loop through tweets
-            for (var i = 0; i < tweets["statuses"].length; i++) {
+          getData({
 
-              //
-              // log each tweet, output it, save it and then return it
-              setupTweet(tweets["statuses"][i], function (err, tweetDoc) {
+            query: query,
+            service: 'twit',
+            socket: socket,
+            socketPath: 'tweets',
+            modelClass: Tweet,
+            collection: socket.user.queries,
 
-                //
-                // add the tweet id to our query.tweets array
-                socket.models.query.tweets.push(tweetDoc._id);
+            eachItem: function(args, cb) {
+              try
+                  args.checkId(new args.modelClass(args.rawData), function (model) {
+                      args.socket.emit(args.socketPath, model);
+                      cb(undefined, model);
+                  }):
+              catch err
+                  return args.pipelineError(err, args.rawData);
+            },
 
-                // decrement the semaphore
-                sem.signal();
-              });
-            };
+            pipeline: function (args) {
 
-            //
-            // when the semaphore = 0 (so all tweets are saved), this executes
-            sem.wait(function () {
-
-              //
-              // save the query object, check it has object id
-              saveQuery(socket.models.query, function (err, query) {
-                if (err) throw err;
-
-                //
-                // add the query id to the users document
-                _this.user.queries.push(query._id);
-
-                //
-                // save the users document and output it over the wire
-                saveUser(_this.user, function (err, userDoc) {
-
-                  //
-                  // call some next method?
-                  done();
+              args.addSemaphore(function () {
+                dbConnect.save({
+                  model: args.socket.models.query,
+                  modelClass: args.Query
+                }, function (err, user) {
+                    args.done(err);
                 });
               });
-            });
+
+              for (var i = 0; i < args.rawCollection.length; i++)
+                  args.rawData = args.rawCollection[i];
+                  args.eachItem(args, function (err, model) {
+                    args.collection.push(model._id);
+                    args.sem.signal();
+                  });
+
+            },
+
+            done: function (err) {
+              if (err)
+                  socket.emit('error', err);
+              else
+                  socket.emit('done');
+            }
           });
         });
       });
