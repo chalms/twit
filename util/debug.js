@@ -10,7 +10,7 @@ module.exports = _.transform({
   yellow: colors.yellow
 }, function (result, color, key) {
   result[key] = function (message) {
-    if (result.value) {
+    if (result.all || (result.out.indexOf(key) !== -1)) {
       if (typeof message === 'string') return console.log(color(message));
       if (typeof message === 'object') return console.log(color(JSON.stringify(message)));
     }

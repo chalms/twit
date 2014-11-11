@@ -19,8 +19,9 @@ var  _ = require('lodash');
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var twit = new Twit(config);
+
 var debug = require('./util/debug.js');
-debug.value = true;
+debug.out = ['red','green'];
 
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
@@ -33,14 +34,15 @@ apis = {
     debug.cyan({ q: query.q });
     twit.get('search/tweets', { q: query.q }, function (err, tweets) {
       if (err) {
-          cb(err, undefined);
+        debug.red(err);
+        cb(err, undefined);
       } else if (tweets) {
-          console.log.call(nug, "Tweets => ");
-          console.log.call(nug, _.keys(tweets));
+          debug.yellow("Tweets => ");
+          debug.yellow(_.keys(tweets));
           cb(undefined, tweets);
       } else {
-        console.log.call(nug, "Tweets is undefined");
-          cb(undefined, undefined);
+        debug.red("API response is undefined");
+        cb(undefined, undefined);
       }
     });
   }
@@ -302,8 +304,6 @@ io.on('connection', function (socket) {
               socket.emit(str, data);
             },
 
-
-
             eachItem: function(args, cb) {
               debug.yellow('eachItem =>');
               try {
@@ -421,8 +421,9 @@ io.on('connection', function (socket) {
   // when the client emits 'add user', this listens and executes
   socket.on('add user', function (username) {
 
-    console.log(colors.yellow("Add User => "));
-    console.log(username);
+    // console.log(colors.yellow("Add User => "));
+    // console.log(username);
+
     // we store the username in the socket session for this client
     socket.username = username;
     // add the client's username to the global list
