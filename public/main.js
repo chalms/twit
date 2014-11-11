@@ -3,26 +3,26 @@ $(function() {
   if (!library)
    var library = {};
 
-library.json = {
- replacer: function(match, pIndent, pKey, pVal, pEnd) {
-    var key = '<span class=json-key>';
-    var val = '<span class=json-value>';
-    var str = '<span class=json-string>';
-    var r = pIndent || '';
-    if (pKey)
-       r = r + key + pKey.replace(/[": ]/g, '') + '</span>: ';
-    if (pVal)
-       r = r + (pVal[0] == '"' ? str : val) + pVal + '</span>';
-    return r + (pEnd || '');
-    },
- prettyPrint: function(obj) {
-    var jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
-    return JSON.stringify(obj, null, 3)
-       .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
-       .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-       .replace(jsonLine, library.json.replacer);
-    }
-};
+  library.json = {
+   replacer: function(match, pIndent, pKey, pVal, pEnd) {
+      var key = '<span class=json-key>';
+      var val = '<span class=json-value>';
+      var str = '<span class=json-string>';
+      var r = pIndent || '';
+      if (pKey)
+         r = r + key + pKey.replace(/[": ]/g, '') + '</span>: ';
+      if (pVal)
+         r = r + (pVal[0] == '"' ? str : val) + pVal + '</span>';
+      return r + (pEnd || '');
+      },
+   prettyPrint: function(obj) {
+      var jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
+      return JSON.stringify(obj, null, 3)
+         .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
+         .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+         .replace(jsonLine, library.json.replacer);
+      }
+  };
 
 
   var FADE_TIME = 150; // ms
@@ -155,12 +155,29 @@ library.json = {
   }
 
   function addTweet(tweet) {
-    var $tweetHtml = $('<div class="expand-container"><a class="expander" href="#">' + tweet.text + '</a><div class="content"></div></div>');
+    var $tweetHtml = $('<div class="expand-container"><div class="content"></div></div>');
+    var $expander = $('<div class="expander hiding" href="#"></div>');
 
-    var $content = $('<pre class="messageBody"><code></code></pre>').html(library.json.prettyPrint(tweet));
+    $expander.click(function (e) {
+      if($(this).hasClass('hiding')) {
+        $(this).parent().children().css('display', 'inherit');
+        $(this).removeClass('hiding');
+      } else {
+        $(this).parent().find('.content').css('display', 'none');
+        $(this).addClass('hiding');
+      }
+    });
 
+    $tweetHtml.prepend($expander);
+
+    var $content = $('<pre><code></code></pre>').html(library.json.prettyPrint(tweet));
+
+    var obj = { _id: tweet._id, text: tweet.text };
+    var $title = $('<pre><code></code></pre>').html(library.json.prettyPrint(obj));
 
     $tweetHtml.find('.content').append($content);
+    $tweetHtml.find('.expander').append($title);
+
 
     addChatMessageTweet({
       username: 'Tweet',
@@ -312,19 +329,22 @@ library.json = {
 
   function consoleError(data) {
     console.error(data);
-  }
+  };
 
   function queryResponse(data) {
     console.info("QUERY");
     console.info(data);
-  }
-
-  function consoleDone() {
-     console.alert("QUERY DONE");
-  }
+  };
 
   function logTweet(data) {
     console.log(data);
+  };
+
+  function doneQuery() {
+    var $messageBodyDiv = $('<span class="messageBody">')
+      .text('done!');
+    var $messageDiv = $('<li/>').append($messageBodyDiv);
+    addMessageElement($messageDiv, {});
   }
 
   socket.on('error', function(data) {
@@ -336,7 +356,7 @@ library.json = {
   });
 
   socket.on('done', function() {
-    consoleDone();
+    doneQuery();
   });
 
 
@@ -368,7 +388,6 @@ library.json = {
   socket.on('stop typing', function (data) {
     removeChatTyping(data);
   });
-
 
 
 });

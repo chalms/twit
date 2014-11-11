@@ -13,22 +13,38 @@ var errorHandler = require('errorhandler'); // to handle errors
 var locks = require("locks");
 var index = require('./routes/index.js');
 var jade = require('jade'); // for jade templating
+var  _ = require('lodash');
 //var tweetSchema = require('./tweets.js');
 //var twitter = new Twit(config);
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var models = require('./models/exports.js');
-
-var Tweet = models.Tweet;
-var TweetUser = models.TweetUser;
-var Query = models.Query;
-var User = models.User;
-
 var twit = new Twit(config);
+var debug = require('./util/debug.js');
+debug.value = true;
 
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
 });
+
+
+apis = {
+  twit: function (query, cb) {
+    debug.yellow('twit =>');
+    debug.cyan({ q: query.q });
+    twit.get('search/tweets', { q: query.q }, function (err, tweets) {
+      if (err) {
+          cb(err, undefined);
+      } else if (tweets) {
+          console.log.call(nug, "Tweets => ");
+          console.log.call(nug, _.keys(tweets));
+          cb(undefined, tweets);
+      } else {
+        console.log.call(nug, "Tweets is undefined");
+          cb(undefined, undefined);
+      }
+    });
+  }
+}
 
 app.use(express.static(__dirname + '/public'));
 // var User = require('./models/user.js');
@@ -36,45 +52,13 @@ app.use(express.static(__dirname + '/public'));
 app.set('view engine', 'jade');
 app.use('/', index);
 
+
 var nug = this;
 var usernames = {};
 var numUsers = 0;
 
-function pipelineError(str, data) {
-  console.log("Function => ");
-  console.log(str);
-  console.log("Arguements => ")
-  console.log(data);
-  socket.emit(str, data);
-}
 
-function cBack(result) {
-  console.log(result);
-  qWrite('user', socket.user )
-}
-
-apis = {
-  twit: function (query, cb) {
-    twit.get('search/tweets', { q: query.q }, function (err, tweets) {
-      if (err)
-          cb(err, undefined);
-      else
-          if tweets
-              if (tweets.instanceof Object)
-                  console.log.call(nug, "Tweets => ");
-                  console.log.call(nug, _.keys(tweets));
-          else
-              console.log.call(nug, "Tweets is undefined");
-          cb(undefined, tweets);
-    });
-  }
-}
-
-Object.prototype.addSemaphore = function (cb) {
-  this.sem = this.sem ? this.sem : locks.createSemaphore(this.rawCollection.length);
-  this.sem.wait(cb);
-}
-
+mongoose.connect('mongodb://localhost/test_dev', function(err) {
 io.on('connection', function (socket) {
   var addedUser = false;
 
@@ -84,77 +68,103 @@ io.on('connection', function (socket) {
   // when the client emits 'new message', this listens and executes
   socket.on('new message', function (data) {
 
-    mongoose.connect('mongodb://localhost/test_dev', function(err) {
+      var models = require('./models/exports.js');
+
+      var Tweet = models.Tweet;
+      var TweetUser = models.TweetUser;
+      var Query = models.Query;
+      var User = models.User;
+
+      var exterior = this;
+      exterior.Query = Query;
+      exterior.Tweet = Tweet;
+
+      function cBack(result) {
+        console.log(result);
+        qWrite('user', socket.user )
+      }
 
 
       function userSetup(cb) {
+        debug.yellow('userSetup =>');
         socket.models.user = User.findOne({ name: 'Janice', password: 'Twitter'});
         if (!(socket.models.user)) {
-          console.log.call(nug, "No User Object");
+          debug.red('No User object!');
           throw err;
         }
         socket.models.user.queries = socket.models.user.queries ? socket.models.user.queries : new Array();
         cb();
       }
 
-      function toObj(model, cb) {
+      function deleteId(obj, cb) {
+        debug.yellow('deleteId =>');
+        if (obj.model.hasOwnProperty('_id')) {
+          delete obj.model._id;
+          return cb(undefined, obj);
+        } else {
+          return cb(undefined, obj);
+        }
+      }
+
+      function toObj(obj, cb) {
+        debug.yellow('toObj =>');
         if (err) cb(err, undefined);
-        var objModel = model.toObject();
-        delete objModel._id;
-        cb(undefined, objModel);
+        if (obj.model.constructor.name === 'model') {
+          obj.model = obj.model.toObject();
+          deleteId(obj, cb);
+        } else {
+          deleteId(obj, cb);
+        }
       }
 
       function setupQuery(query, cb) {
+        debug.yellow('setup Query =>');
+
         function getQueryObject(queryMongoose, cb) {
-          console.log.call(nug, "Query as Mongoose => ");
-          console.log.call(nug, queryMongoose);
+          debug.yellow('getQueryObject =>');
           cb(queryMongoose.toObject());
         }
 
         function remove_id(queryObj, cb) {
-          console.log.call(nug, "Query as Object => ");
-          console.log.call(nug, queryObj);
+          debug.yellow('remove_id =>');
           delete queryObj._id;
           cb(queryObj);
         }
 
 
         getQueryObject(query, function (queryObj) {
-          remove_id(queryObj, function (queryObject) {
-            Query.findOne(queryObject, function (err, queryDoc) {
-              if (err) {
-                console.log.call(nug, "Error finding query!");
-                console.log.call(nug, err.toString());
-                throw err;
-              }
-              if (queryDoc) {
-                console.log.call(nug, "Query Doc => ");
-                console.log.call(nug, queryDoc);
-                cb(undefined, queryDoc);
-              } else {
-                query.save(function (err) {
-                  console.log.call(nug, "Query.save => ");
-                  console.log.call(nug, query);
-                  cb(err, query);
-                });
-              }
-            });
-          });
+          debug.yellow('getQueryObject.callback =>')
+          debug.green(queryObj);
+          upsert({model: queryObj, modelClass: Query}, cb);
         });
       }
 
+      function checkId(model, cb) {
+        if (!(model)) {
+          debug.red('model does not exist!');
+        } else if (model._id) {
+          debug.green('model has _id');
+        } else {
+          debug.cyan(model);
+        }
+        cb(model);
+      }
+
       function setup(queryData, callback) {
+        debug.yellow('setup =>');
         socket.models.query = queryData;
         setup = locks.createSemaphore(2);
 
         userSetup(function () {
+          debug.yellow('userSetup.callback =>');
           setup.signal();
         });
 
         setupQuery(queryData, function (err, queryData) {
+          debug.yellow('setupQuery.callback =>');
           if (err) {
-            console.log.call(nug, "Set Query => error");
-            console.log.call(nug, err.toString());
+            debug.red("Set Query => error");
+            debug.red(err);
             throw (err);
           } else {
             socket.models.query = queryData;
@@ -163,21 +173,21 @@ io.on('connection', function (socket) {
         });
 
         setup.wait(function () {
+          debug.yellow('setup.wait.callback =>');
           callback();
         });
       }
 
       function replaceQuery(queryDoc, user, cb) {
+        debug.yellow('replaceQuery =>');
         socket.models.query = queryDoc;
-        console.log.call(nug, "Query:");
-        console.log.call(nug, queryDoc);
         cb(socket.models.query, user);
       }
 
       function saveQuery(query, cb) {
+        debug.yellow('saveQuery =>');
         query.save(function (err) {
-          console.log(query);
-          console.log(query);
+          debug.green(query);
           if (err) cb(err, undefined);
           if (!(query._id)) throw "Query has no ObjectID";
           cb(undefined, query);
@@ -185,12 +195,12 @@ io.on('connection', function (socket) {
       }
 
       function saveUser(user, cb) {
+        debug.yellow('saveUser =>');
         user.save(function (err, userDoc) {
           if (err) {
             socket.emit('error', err);
             return;
-          }
-          if (user) {
+          } else if (user) {
             socket.emit('done', user);
             cb(undefined, user);
           } else {
@@ -201,57 +211,71 @@ io.on('connection', function (socket) {
       }
 
       function find(model, modelClass, cb, cb1) {
+        debug.yellow('find =>');
+        debug.cyan('model: ' + JSON.stringify(model) + '\nmodelClass: ' + modelClass);
         return modelClass.find(model, function(err, dbModel) {
-          if (err)
+          if (err) {
               return cb(err, undefined);
-          else if (dbModel)
+          } else if (dbModel) {
               return cb(undefined, dbModel);
-          else
-            if (cb1)
-                return cb1(model);
-            else
-                return cb(undefined, undefined);
+          } else if (cb1) {
+              return cb1();
+          } else {
+              return cb(undefined, undefined);
+          }
         });
       }
 
-      function save(model, cb) {
-        model.save(function (err) {
+      function save(model, modelClass, cb) {
+        debug.yellow('save =>');
+        debug.cyan('model: ' + JSON.stringify(model) + '\nmodelClass: ' + modelClass);
+        if (!(model._id)) {
+          model.save(model, function (err) {
+            if (err) return cb(err, undefined);
+            return cb(undefined, model);
+          });
+        }
+      }
+
+      function upsert(obj, cb) {
+        debug.yellow('upsert =>');
+        debug.cyan(obj);
+        toObj(obj, function (err, model) {
           if (err) return cb(err, undefined);
-          return cb(undefined, model);
+          find(model, obj.modelClass, cb, function (model) {
+            save(model, obj.modelClass, cb);
+          });
         });
+
       }
 
-      function upsert(inputModel, modelClass, cb) {
-        if (!(inputModel._id))
-            return cb((new Error("NO ID IN UPSERT OF " + inputModel.toString())), undefined);
-        else
-            return toObj(inputModel, function (err, model) {
-              if (err) return cb(err, undefined);
-              return findModel(inputModel, modelClass, cb, function (model)) {
-                return saveModel(model, cb);
-              });
-            });
-      }
+      setup(new Query({q: data}), function (err) {
+        debug.yellow('setup.callback =>');
 
-      setup(new Query({q: data}), function () {
-        if (err)
-            console.log.call(nug, err.toString());
-            throw err;
-        else
-            socket.models.user.queries.push(socket.models.query._id);
+        if (err) {
+          debug.red(err);
+          throw err;
+        }
 
-        //
-        // just log and query = queryDoc
+        socket.models.user.queries.push(socket.models.query._id);
         replaceQuery(socket.models.query, socket.models.user, function (query, user) {
 
+          debug.yellow('replaceQuery.callback =>');
+
           socket.models.query = query;
-          // "Error retrieving tweets!"
 
           function getData(args) {
+            debug.yellow('getData =>');
             apis[args.service](args.query, function (err, data) {
-              if (err)
-                  args.done(err);
-              args.rawCollection = data;
+              debug.yellow('getData.callback =>');
+              debug.cyan(data);
+
+              if (err) {
+                debug.red(err);
+                args.done(err);
+              }
+
+              args.rawCollection = data["statuses"];
               return args.pipeline(args);
             });
           }
@@ -261,50 +285,72 @@ io.on('connection', function (socket) {
             query: query,
             service: 'twit',
             socket: socket,
-            socketPath: 'tweets',
-            modelClass: Tweet,
-            collection: socket.user.queries,
+            socketPath: 'tweet',
+            modelClass: exterior.Tweet,
+            collection: query.tweets,
+
+            addSemaphore: function (cb) {
+              debug.yellow('addSemaphore =>');
+              debug.green(this.rawCollection.length);
+              this.sem = this.sem ? this.sem : locks.createSemaphore(this.rawCollection.length);
+              this.sem.wait(cb);
+            },
+
+            pipelineError: function (str, data) {
+              debug.yellow('pipelineError => ');
+              debug.red("Function: " + str + "\nArguments: " + JSON.stringify(data));
+              socket.emit(str, data);
+            },
+
+
 
             eachItem: function(args, cb) {
-              try
-                  args.checkId(new args.modelClass(args.rawData), function (model) {
+              debug.yellow('eachItem =>');
+              try {
+                  checkId((new args.modelClass(args.rawData)), function (model) {
                       args.socket.emit(args.socketPath, model);
                       cb(undefined, model);
-                  }):
-              catch err
-                  return args.pipelineError(err, args.rawData);
+                  });
+              } catch (err) {
+                return args.pipelineError(err, args.rawData); }
             },
 
             pipeline: function (args) {
+              //debug.cyan(args);
+              debug.yellow('Pipeline => ');
 
               args.addSemaphore(function () {
-                dbConnect.save({
-                  model: args.socket.models.query,
-                  modelClass: args.Query
+                debug.yellow('addSemaphore.callback =>');
+                upsert({
+                  model: args.query,
+                  modelClass: Query
                 }, function (err, user) {
-                    args.done(err);
+                  debug.yellow('upsert.callback =>');
+                  args.done(err);
                 });
               });
 
-              for (var i = 0; i < args.rawCollection.length; i++)
-                  args.rawData = args.rawCollection[i];
-                  args.eachItem(args, function (err, model) {
-                    args.collection.push(model._id);
-                    args.sem.signal();
-                  });
-
+              for (var i = 0; i < args.rawCollection.length; i++) {
+                args.rawData = args.rawCollection[i];
+                args.eachItem(args, function (err, model) {
+                  debug.yellow('eachItem.callback =>');
+                  args.collection.push(model._id);
+                  args.sem.signal();
+                });
+              }
             },
 
             done: function (err) {
-              if (err)
-                  socket.emit('error', err);
-              else
-                  socket.emit('done');
+              debug.yellow('done =>');
+              if (err) {
+                debug.red(err);
+                socket.emit('error', err);
+              }
+              return socket.emit('done');
             }
           });
         });
       });
-    });
   });
 
   //   console.log(colors.yellow("Query: => "));
@@ -318,44 +364,44 @@ io.on('connection', function (socket) {
 
   var datahas = true;
 
-  socket.on('login', function (username) {
-    console.log("Login: => \n\t");
-    console.log(username);
-    // var username = signupData.name;
-    try {
-      socket.user =  new User({ username: username });
-    } catch (err) {
-      console.log(colors.red(err.toString()));
-    }
+  // socket.on('login', function (username) {
+  //   console.log("Login: => \n\t");
+  //   console.log(username);
+  //   // var username = signupData.name;
+  //   // try {
+  //   //   socket.user =  new User({ username: username });
+  //   // } catch (err) {
+  //   //   console.log(colors.red(err.toString()));
+  //   // }
 
-    if (socket.user) {
-      socket.username = username;
-      // add the client's username to the global list
-      usernames[username] = username;
-      ++numUsers;
-      addedUser = true;
-      socket.emit('user', socket.user);
-    } else {
-      socket.emit('error', "Signup did not work!");
-    }
-  })
+  //   if (socket.user) {
+  //     socket.username = username;
+  //     // add the client's username to the global list
+  //     usernames[username] = username;
+  //     ++numUsers;
+  //     addedUser = true;
+  //     socket.emit('user', socket.user);
+  //   } else {
+  //     socket.emit('error', "Signup did not work!");
+  //   }
+  // })
 
-  // when the client emits 'add user', this listens and executes
-  socket.on('request login', function (username) {
-    console.log(colors.yellow("Add User => "));
-    console.log(colors.yellow(("\t" + JSON.stringify(username))));
-    // we store the username in the socket session for this client
-    if (username.hasOwnProperty('username')) {
+  // // when the client emits 'add user', this listens and executes
+  // socket.on('request login', function (username) {
+  //   console.log(colors.yellow("Add User => "));
+  //   console.log(colors.yellow(("\t" + JSON.stringify(username))));
+  //   // we store the username in the socket session for this client
+  //   if (username.hasOwnProperty('username')) {
 
-      socket.emit('user', { name: "JOHNO", queries: []})
+  //     socket.emit('user', { name: "JOHNO", queries: []})
 
-    } else {
-      socket.emit('login', {
-        username: "<name>",
-        password: "<password>"
-      });
-    }
-  });
+  //   } else {
+  //     socket.emit('login', {
+  //       username: "<name>",
+  //       password: "<password>"
+  //     });
+  //   }
+  // });
 
 
   var addedUser = false;
@@ -407,4 +453,6 @@ io.on('connection', function (socket) {
       });
     }
   });
+});
+
 });

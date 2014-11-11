@@ -40,4 +40,6 @@ var Query = mongoose.model('Query', MongooseSchemas.QuerySchema);
 // _.extend(QueryQueue.prototype, Query)
 // _.extend(QueryQueue, Query);
 
-module.exports = Query;
+module.exports = {
+  Query: Query
+}
