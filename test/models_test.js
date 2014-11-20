@@ -6,102 +6,107 @@ var Schema = mongoose.Schema;
 var Mongoose = mongoose.Mongoose;
 var myMongoose = new Mongoose();
 
-var models = require('../models/exports.js')
-, User = models.User
-, Tweet = models.Tweet
-, TweetUser = models.TweetUser
-, Query = models.Query;
 
 var nug = this;
-myMongoose.connect('mongodb://localhost:27017/test');
+myMongoose.connect('mongodb://localhost:27017/test_dev');
 
-// describe("Testing all classes", function (done) {
-//   beforeEach(function (done) {
-//     User.remove({}, function (err) {
-//       if (err) {
-//         console.log.call(nug, "Error in BeforeEach");
-//         console.log.call(nug, err);
-//       }
-//     });
-//     done();
-//   });
-
-//   it('Should save a new user', function (done) {
-//     new User({ name: 'Andrew', password: 'password'}).save.call(this, function (err, model) {
-//       if (err) {
-//         console.log.call(nug, err);
-//         done(err);
-//       }
-//       expect(model).to.eql(user);
-//       done();
-//     });
-//   });
-
-//   it('Should not save a duplicate', function (done) {
-//     function thrower (val) {
-//       var user, user2;
-//       try {
-//         user = new User({ name: 'Andrew', password: 'password'});
-//         user2 = new User({ name: 'Andrew', password: 'password' });
-//       } catch (err) {
-//         console.log.call(nug, err);
-//         return val(1);
-//       }
-//       user.save(function (err3, m) {
-//         if (err3) return val(1);
-//         user2.save(function (err2, m1) {
-//           if (err2) return val(1);
-//           val(2);
-//         });
-//       });
-//     }
-//     thrower(function (v) {
-//       expect(v).to.eql(1);
-//     });
-//     done();
-//   });
-
-//   it('Should throw an error', function (done) {
-//     function thrower (val) {
-//       var user, query;
-//       try {
-
-//         user = new User({ name: 'Andrew', password: 'password'});
-//         query1 = new Query({ q: 'GOOG'});
-
-//         user.queries.push(new Query({ q: 'GooGl'}));
-//         user.queries.push(query1.ObjectId);
-
-//         var tweet1 = new Tweet({ id: 123, user_id: 123432});
-//         tweet1.save(function (err, data) {
-//           if (err) done(err);
-//           query.tweets.push(data.ObjectId);
-//           var tweet2 = new Tweet({ id: 123, user_id: 123432})
-//           query.tweets.push(tweet2.ObjectId);
-//           tweet2.save(function (err, model) {
-//             if (err) done(err);
-//           });
-//         });
+describe("Testing all classes", function (done) {
 
 
-//       } catch (err) {
-//         console.log.call(nug, err);
-//         return val(1);
-//       }
-//       user.save(function (err3, m) {
-//         if (err3) return val(1);
-//         user2.save(function (err2, m1) {
-//           if (err2) return val(1);
-//           val(2);
-//         });
-//       });
-//     }
-//     thrower(function (v) {
-//       expect(v).to.eql(1);
-//     });
-//     done();
-//   });
-// });
+
+  beforeEach(function (done) {
+      var models = require('../models/exports.js');
+      var User = models.User
+      , Tweet = models.Tweet
+      , TweetUser = models.TweetUser
+      , Query = models.Query;
+    // User.remove({}, function (err) {
+    //   if (err) {
+    //     console.log.call(nug, "Error in BeforeEach");
+    //     console.log.call(nug, err);
+    //   }
+    // });
+    done();
+  });
+
+
+  it('Should save a new user', function (done) {
+    var user = new User({ name: 'Andrew', password: 'password'});
+    user.save(user, function (err) {
+      if (err) {
+        console.log.call(nug, err);
+        done(err);
+      }
+      expect(model).to.eql(user);
+      done();
+    });
+  });
+
+  it('Should not save a duplicate', function (done) {
+    function thrower (val) {
+      var user, user2;
+      try {
+        user = new User({ name: 'Andrew', password: 'password'});
+        user2 = new User({ name: 'Andrew', password: 'password' });
+      } catch (err) {
+        console.log.call(nug, err);
+        return val(1);
+      }
+      user.save(function (err3, m) {
+        if (err3) return val(1);
+        user2.save(function (err2, m1) {
+          if (err2) return val(1);
+          val(2);
+        });
+      });
+    }
+    thrower(function (v) {
+      expect(v).to.eql(1);
+    });
+    done();
+  });
+
+  it('Should throw an error', function (done) {
+    function thrower (val) {
+      var user, query;
+      try {
+
+        user = new User({ name: 'Andrew', password: 'password'});
+        query1 = new Query({ q: 'GOOG'});
+
+        user.queries.push(new Query({ q: 'GooGl'}));
+        user.queries.push(query1.ObjectId);
+
+        var tweet1 = new Tweet({ id: 123, user_id: 123432});
+        tweet1.save(function (err, data) {
+          if (err) done(err);
+          query.tweets.push(data.ObjectId);
+          var tweet2 = new Tweet({ id: 123, user_id: 123432})
+          query.tweets.push(tweet2.ObjectId);
+          tweet2.save(function (err, model) {
+            if (err) done(err);
+          });
+        });
+
+
+      } catch (err) {
+        console.log.call(nug, err);
+        return val(1);
+      }
+      user.save(function (err3, m) {
+        if (err3) return val(1);
+        user2.save(function (err2, m1) {
+          if (err2) return val(1);
+          val(2);
+        });
+      });
+    }
+    thrower(function (v) {
+      expect(v).to.eql(1);
+    });
+    done();
+  });
+});
 
   //     console.log(colors.yellow('this fires after the post hook'));
 
@@ -160,3 +165,4 @@ myMongoose.connect('mongodb://localhost:27017/test');
   //     done();
   //   });
   // });
+// });

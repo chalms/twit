@@ -1,16 +1,18 @@
 extends layout
 block content
-  ul.pages
-    li.chat.page
-        .chatArea
-          ul.messages
-        input.inputMessage(placeholder='Type here...')
-      li.login.page
-        .form
-          h3.title Welcome.
-          input.usernameInput(type='text', maxlength='14')
-          input.passwordInput(type='text', maxlength='14')
-  script(src='/socket.io/socket.io.js')
-  script(src="/jquery.expander.js")
-  script(src='/main.js')
-  script(src='/pure.js')
+  div#data
+  div#functions
+  div#graph
+  div#console
+    ul.pages
+      li.chat.page
+          .chatArea
+            ul.messages
+          input.inputMessage(placeholder='Type here...')
+        li.login.page
+          .form
+            h3.title Welcome.
+            input.usernameInput(type='text', maxlength='14')
+    script(src='/socket.io/socket.io.js')
+    script(src="/vendor/jquery.expander.js")
+    script(src='/app.js')
