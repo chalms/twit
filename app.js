@@ -17,49 +17,35 @@ var  _ = require('lodash');
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 var twit = new Twit(config);
-
 var debug = require('./util/debug.js');
-debug.out = ['red','green', 'cyan'];
-
+debug.out = ['red'];
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
 });
-
 var apis = require('./apis.js');
-
 app.use(express.static(__dirname + '/public'));
-// var User = require('./models/user.js');
-// var user = new User(collectionName);
 app.set('view engine', 'jade');
 app.use('/', index);
-
-
 var nug = this;
 var usernames = {};
 var numUsers = 0;
 var firstSocket = false;
 var count = 0;
-
 mongoose.connect('mongodb://localhost/test_dev', function(err) {
-
   var models = require('./models/exports.js');
   var Tweet = models.Tweet;
   var TweetUser = models.TweetUser;
   var Query = models.Query;
   var User = models.User;
-
   var exterior = this;
   exterior.Query = Query;
   exterior.Tweet = Tweet;
-
   var database = require('./twit_db.js');
   database(function (db) {
     io.on('connection', function (socket) {
-
       var addedUser = false;
       if (firstSocket === false) firstSocket = socket;
       socket.models = {};
-
       function userSetup(cb) {
         debug.yellow('userSetup =>');
         socket.models.user = User.findOne({ name: 'Janice', password: 'Twitter'});
@@ -70,17 +56,14 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
         socket.models.user.queries = socket.models.user.queries ? socket.models.user.queries : new Array();
         cb();
       }
-
       function setup(queryData, callback) {
         debug.yellow('setup =>');
         socket.models.query = queryData;
         setup = locks.createSemaphore(2);
-
         userSetup(function () {
           debug.yellow('userSetup.callback =>');
           setup.signal();
         });
-
         db.setupQuery(queryData, function (err, queryData) {
           debug.yellow('setupQuery.callback =>');
           if (err) {
@@ -92,20 +75,16 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
             setup.signal();
           }
         });
-
         setup.wait(function () {
           debug.yellow('setup.wait.callback =>');
           callback();
         });
       }
-
-
       function replaceQuery (queryDoc, user, cb) {
         debug.yellow('replaceQuery =>');
         socket.models.query = queryDoc;
         cb(socket.models.query, user);
       }
-
       function saveUser(user, cb) {
         debug.yellow('saveUser =>');
         user.save(function (err, userDoc) {
@@ -121,25 +100,16 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
           }
         });
       }
-      //
-      // when the client emits 'new message', this listens and executes
-
       socket.on('new message', function (data) {
-
         var functions = {
-
           query: function (data) {
-
             setup(new Query({q: data}), function (err) {
               debug.yellow('setup.callback =>');
               if (err) { debug.red(err); throw err; }
-
               socket.models.user.queries.push(socket.models.query._id);
               replaceQuery(socket.models.query, socket.models.user, function (query, user) {
-
                 debug.yellow('replaceQuery.callback =>');
                 socket.models.query = query;
-
                 function getData(args) {
                   debug.yellow('getData =>');
                   apis[args.service](args.query, function (err, data) {
@@ -154,7 +124,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                     return args.pipeline(args);
                   });
                 }
-
                 getData({
                   query: query,
                   service: 'twit',
@@ -162,7 +131,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                   socketPath: 'tweet',
                   modelClass: exterior.Tweet,
                   collection: query.tweets,
-
                   addSemaphore: function (cb) {
                     debug.yellow('addSemaphore =>');
                     debug.green(this.rawCollection.length);
@@ -179,7 +147,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                     try {
                         db.checkId((new args.modelClass(args.rawData)), function (model) {
                             args.socket.emit(args.socketPath, model);
-                           // console.log(firstSocket);
                             args.socket.broadcast.emit('message', model);
                             cb(undefined, model);
                         });
@@ -187,7 +154,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                       return args.pipelineError(err, args.rawData);
                     }
                   },
-
                   pipeline: function (args) {
                     debug.yellow('Pipeline => ');
                     args.addSemaphore(function () {
@@ -200,7 +166,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                         args.done(err);
                       });
                     });
-
                     for (var i = 0; i < args.rawCollection.length; i++) {
                       args.rawData = args.rawCollection[i];
                       args.eachItem(args, function (err, model) {
@@ -210,7 +175,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                       });
                     }
                   },
-
                   done: function (err) {
                     debug.yellow('done =>');
                     if (err) {
@@ -230,15 +194,9 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
           functions.query(data);
         }
       });
-
-
       var datahas = true;
-
       var addedUser = false;
-
-      // when the client emits 'new message', this listens and executes
       socket.on('score', function (data) {
-        // we tell the client to execute 'new message'
         var vargs = {};
         vargs.socket = socket;
         vargs.data = data;
@@ -254,7 +212,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                 debug.red('Model.save error!');
                 debug.red(err);
               } else {
-                debug.green('Model score saved!');
                 debug.cyan(model);
                 vargs.socket.broadcast.emit('update', {
                    message: data
@@ -264,37 +221,23 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
           }
         });
       });
-
-      // when the client emits 'add user', this listens and executes
       socket.on('add user', function (username) {
-
-        // console.log(colors.yellow("Add User => "));
-        // console.log(username);
-
-        // we store the username in the socket session for this client
         socket.username = username;
-        // add the client's username to the global list
         usernames[username] = username;
         ++numUsers;
         addedUser = true;
         socket.emit('login', {
           numUsers: numUsers
         });
-        // echo globally (all clients) that a person has connected
         socket.broadcast.emit('user joined', {
           username: socket.username,
           numUsers: numUsers
         });
       });
-
-      // when the user disconnects.. perform this
       socket.on('disconnect', function () {
-        // remove the username from global usernames list
         if (addedUser) {
           delete usernames[socket.username];
           --numUsers;
-
-          // echo globally that this client has left
           socket.broadcast.emit('user left', {
             username: socket.username,
             numUsers: numUsers
@@ -304,46 +247,3 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
     });
   });
 });
-
-
-
-
-      // socket.on('login', function (username) {
-      //   console.log("Login: => \n\t");
-      //   console.log(username);
-      //   // var username = signupData.name;
-      //   // try {
-      //   //   socket.user =  new User({ username: username });
-      //   // } catch (err) {
-      //   //   console.log(colors.red(err.toString()));
-      //   // }
-
-      //   if (socket.user) {
-      //     socket.username = username;
-      //     // add the client's username to the global list
-      //     usernames[username] = username;
-      //     ++numUsers;
-      //     addedUser = true;
-      //     socket.emit('user', socket.user);
-      //   } else {
-      //     socket.emit('error', "Signup did not work!");
-      //   }
-      // })
-
-      // // when the client emits 'add user', this listens and executes
-      // socket.on('request login', function (username) {
-      //   console.log(colors.yellow("Add User => "));
-      //   console.log(colors.yellow(("\t" + JSON.stringify(username))));
-      //   // we store the username in the socket session for this client
-      //   if (username.hasOwnProperty('username')) {
-
-      //     socket.emit('user', { name: "JOHNO", queries: []})
-
-      //   } else {
-      //     socket.emit('login', {
-      //       username: "<name>",
-      //       password: "<password>"
-      //     });
-      //   }
-      // });
-

@@ -4,7 +4,6 @@ var config = require('./util/config1.js'); //for API Auth
 var Twit = require('twit'); //for twitter api library
 var colors = require('colors');  // to add color to your console.logs
 var twit = new Twit(config);
-
 module.exports = {
   twit: function (query, cb) {
     debug.yellow('twit =>');
