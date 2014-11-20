@@ -1,34 +1,3 @@
-// var App = {
-//   Models: {},
-//   Views: {},
-//   Indexes: {},
-//   Chains: {}
-// }
-
-// window.sidebar = new App.Views.Sidebar({ model: new App.Models.Sidebar()});
-
-// var backboneFactory = function (modelName, cb) {
-//   var modelClassName = modelName.charAt(0).toUpperCase() + modelName.slice(1);
-//   var viewName = modelClassName + 'View';
-
-//   App.Models[modelClassName] = Backbone.Model.extend({
-//     _id: undefined
-//     initialize: function() {
-//       if (tweetView === undefined)
-//     },
-//     addToChain: function () {
-//       if (!(this._id)) {
-//         App.Indexes[modelClassName][_id] = this;
-//       } else {
-//         App.Chains[modelClassName].push(this);
-//       }
-//     },
-//     allowedToEdit: function(account) {
-//       return true;
-//     }
-// });
-
-
 $(function() {
   if (!library)
    var library = {};

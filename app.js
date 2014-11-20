@@ -234,46 +234,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
 
       var datahas = true;
 
-      // socket.on('login', function (username) {
-      //   console.log("Login: => \n\t");
-      //   console.log(username);
-      //   // var username = signupData.name;
-      //   // try {
-      //   //   socket.user =  new User({ username: username });
-      //   // } catch (err) {
-      //   //   console.log(colors.red(err.toString()));
-      //   // }
-
-      //   if (socket.user) {
-      //     socket.username = username;
-      //     // add the client's username to the global list
-      //     usernames[username] = username;
-      //     ++numUsers;
-      //     addedUser = true;
-      //     socket.emit('user', socket.user);
-      //   } else {
-      //     socket.emit('error', "Signup did not work!");
-      //   }
-      // })
-
-      // // when the client emits 'add user', this listens and executes
-      // socket.on('request login', function (username) {
-      //   console.log(colors.yellow("Add User => "));
-      //   console.log(colors.yellow(("\t" + JSON.stringify(username))));
-      //   // we store the username in the socket session for this client
-      //   if (username.hasOwnProperty('username')) {
-
-      //     socket.emit('user', { name: "JOHNO", queries: []})
-
-      //   } else {
-      //     socket.emit('login', {
-      //       username: "<name>",
-      //       password: "<password>"
-      //     });
-      //   }
-      // });
-
-
       var addedUser = false;
 
       // when the client emits 'new message', this listens and executes
@@ -341,8 +301,49 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
           });
         }
       });
-
     });
   });
 });
+
+
+
+
+      // socket.on('login', function (username) {
+      //   console.log("Login: => \n\t");
+      //   console.log(username);
+      //   // var username = signupData.name;
+      //   // try {
+      //   //   socket.user =  new User({ username: username });
+      //   // } catch (err) {
+      //   //   console.log(colors.red(err.toString()));
+      //   // }
+
+      //   if (socket.user) {
+      //     socket.username = username;
+      //     // add the client's username to the global list
+      //     usernames[username] = username;
+      //     ++numUsers;
+      //     addedUser = true;
+      //     socket.emit('user', socket.user);
+      //   } else {
+      //     socket.emit('error', "Signup did not work!");
+      //   }
+      // })
+
+      // // when the client emits 'add user', this listens and executes
+      // socket.on('request login', function (username) {
+      //   console.log(colors.yellow("Add User => "));
+      //   console.log(colors.yellow(("\t" + JSON.stringify(username))));
+      //   // we store the username in the socket session for this client
+      //   if (username.hasOwnProperty('username')) {
+
+      //     socket.emit('user', { name: "JOHNO", queries: []})
+
+      //   } else {
+      //     socket.emit('login', {
+      //       username: "<name>",
+      //       password: "<password>"
+      //     });
+      //   }
+      // });
 
