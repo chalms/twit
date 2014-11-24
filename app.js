@@ -53,6 +53,7 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
   exterior.Tweet = Tweet;
 
   var database = require('./twit_db.js');
+
   database(function (db) {
     io.on('connection', function (socket) {
 
@@ -74,11 +75,11 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
       function setup(queryData, callback) {
         debug.yellow('setup =>');
         socket.models.query = queryData;
-        setup = locks.createSemaphore(2);
+        setupLocks = locks.createSemaphore(2);
 
         userSetup(function () {
           debug.yellow('userSetup.callback =>');
-          setup.signal();
+          setupLocks.signal();
         });
 
         db.setupQuery(queryData, function (err, queryData) {
@@ -89,11 +90,11 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
             throw (err);
           } else {
             socket.models.query = queryData;
-            setup.signal();
+            setupLocks.signal();
           }
         });
 
-        setup.wait(function () {
+        setupLocks.wait(function () {
           debug.yellow('setup.wait.callback =>');
           callback();
         });
@@ -124,13 +125,32 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
       //
       // when the client emits 'new message', this listens and executes
 
+      var calls = {};
       socket.on('new message', function (data) {
 
         var functions = {
 
           query: function (data) {
+            var q, query;
+            console.log(data);
+            console.log(calls);
 
-            setup(new Query({q: data}), function (err) {
+            if (data.trim() === "") {
+
+              q = calls;
+
+              query = new Query(q);
+              console.log(colors.yellow(JSON.stringify(query)));
+            } else {
+              q = {q: data};
+              calls.q = data;
+              query = new Query(q);
+
+              console.log(colors.yellow("CALLS MAX_ID NOT EXISTS"));
+              console.log(colors.yellow(JSON.stringify(query)));
+            };
+
+            setup(query, function (err) {
               debug.yellow('setup.callback =>');
               if (err) { debug.red(err); throw err; }
 
@@ -151,6 +171,7 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                       return;
                     }
                     args.rawCollection = data["statuses"];
+                    args.max_id = data["search_metadata"]["max_id"];
                     return args.pipeline(args);
                   });
                 }
@@ -190,6 +211,17 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
 
                   pipeline: function (args) {
                     debug.yellow('Pipeline => ');
+
+                    if (calls) {
+                      if (args.max_id) {
+                         calls.max_id = args.max_id;
+                      } else {
+                        throw new Error('no max id object');
+                      }
+                    } else {
+                      throw new Error('no calls object!');
+                    }
+
                     args.addSemaphore(function () {
                       debug.yellow('addSemaphore.callback =>');
                       db.upsert({
@@ -206,6 +238,10 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                       args.eachItem(args, function (err, model) {
                         debug.yellow('eachItem.callback =>');
                         args.collection.push(model._id);
+                        if (calls.max_id > model.id) {
+                          console.log('swapping');
+                          calls.max_id = model.id;
+                        }
                         args.sem.signal();
                       });
                     }
@@ -272,7 +308,6 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
       //     });
       //   }
       // });
-
 
       var addedUser = false;
 

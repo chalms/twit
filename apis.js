@@ -5,11 +5,29 @@ var Twit = require('twit'); //for twitter api library
 var colors = require('colors');  // to add color to your console.logs
 var twit = new Twit(config);
 
+var x = 0;
 module.exports = {
   twit: function (query, cb) {
     debug.yellow('twit =>');
     debug.cyan({ q: query.q });
-    twit.get('search/tweets', { q: query.q }, function (err, tweets) {
+
+    function getQuery(query) {
+      var qu = { q: query.q };
+      if (query.maxId) qu.max_id = query.maxId;
+      console.log()
+      return qu;
+    }
+
+    var result = getQuery(query);
+    console.log(colors.red(JSON.stringify(result)));
+    if (x > 1) {
+
+      throw new Error('your gay!');
+
+    } else {
+      x = x + 1;
+    }
+    twit.get('search/tweets', result, function (err, tweets) {
       if (err) {
         debug.red(err);
         cb(err, undefined);
