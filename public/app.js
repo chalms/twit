@@ -28,10 +28,13 @@
 //     }
 // });
 
+_that = this;
 
 $(function() {
-  if (!library)
-   var library = {};
+  if (!library) var library = {};
+  window.tweets = {};
+  window.tweetUsers = {};
+  window.errorStack = [];
 
   var FADE_TIME = 150,
   TYPING_TIMER_LENGTH = 400,
@@ -64,7 +67,7 @@ $(function() {
        },
     prettyPrint: function(obj) {
        var jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
-       return JSON.stringify(obj, null, 3)
+       return JSON.stringify(obj, null, 1)
           .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
           .replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(jsonLine, library.json.replacer);
@@ -162,6 +165,7 @@ $(function() {
   function addTweet(tweet) {
     var $tweetHtml = $('<div class="expand-container"><div class="content"></div></div>');
     var $expander = $('<div class="expander hiding" href="#"></div>');
+
     $expander.click(function (e) {
       if($(this).hasClass('hiding')) {
         $(this).parent().children().css('display', 'inherit');
@@ -171,6 +175,7 @@ $(function() {
         $(this).addClass('hiding');
       }
     });
+
     $tweetHtml.prepend($expander);
     var $content = $('<pre><code></code></pre>').html(library.json.prettyPrint(tweet));
     var obj = { _id: tweet._id, text: tweet.text };
@@ -192,15 +197,44 @@ $(function() {
     console.info(data);
   };
 
+  function addUserId(tweet) {
+    if (tweet.user){
+      if (typeof tweet.user === 'object') {
+        if (tweet.user.id) {
+          window.tweetUsers[tweet.user.id] = {};
+        } else {
+          console.error('tweet user for tweet ' + tweet.id + ' has no user id');
+          window.errorStack.push(tweet.user);
+        }
+      }
+    }
+  }
+
   function logTweet(data) {
-    console.log(data);
+    window.tweets[data.id] = data;
+    addUserId(data);
   };
+
+  _that.getUsers = function () {
+    x = window.tweetUsers;
+    var res = _(x).chain()
+      .pairs()
+      .reject(function (pair) {
+        return !($.isEmptyObject(pair[1])); })
+      .map(function (val) {
+        return val[0];
+      })
+      .join(",")
+      .value();
+    socket.emit('tweet_user', res);
+  }
 
   function doneQuery() {
     var $messageBodyDiv = $('<span class="messageBody">')
       .text('done!');
     var $messageDiv = $('<li/>').append($messageBodyDiv);
     addMessageElement($messageDiv, {});
+    _that.getUsers();
   }
 
   // Adds the visual chat typing message
@@ -263,6 +297,33 @@ $(function() {
     }
   }
 
+
+  function addTweetUser(data) {
+    var $tweetHtml = $('<div class="expand-container"><div class="content"></div></div>');
+    var $expander = $('<div class="expander hiding" href="#"></div>');
+
+    $expander.click(function (e) {
+      if($(this).hasClass('hiding')) {
+        $(this).parent().children().css('display', 'inherit');
+        $(this).removeClass('hiding');
+      } else {
+        $(this).parent().find('.content').css('display', 'none');
+        $(this).addClass('hiding');
+      }
+    });
+    $tweetHtml.prepend($expander);
+    var $content = $('<pre><code></code></pre>').html(library.json.prettyPrint(data));
+    var obj = { id: data.id };
+    var $title = $('<pre><code></code></pre>').html(library.json.prettyPrint(obj));
+    $tweetHtml.find('.content').append($content);
+    $tweetHtml.find('.expander').append($title);
+
+    addChatMessageTweet({
+      username: 'User',
+      message: JSON.stringify(data)
+    }, $tweetHtml);
+  }
+
   // Gets the 'X is typing' messages of a user
   function getTypingMessages (data) {
     return $('.typing.message').filter(function (i) {
@@ -321,9 +382,42 @@ $(function() {
     doneQuery();
   });
 
-  socket.on('tweet', function(data) {
-    logTweet(data);
-     addTweet(data);
+  socket.on('tweet', function (data) {
+    if (data) {
+      if (typeof data === 'object') {
+        if (data.id) {
+          logTweet(data);
+          addTweet(data);
+        }
+      } else {
+        console.error('tweet_user data is not an object!');
+        window.errorStack.push(data);
+      }
+    } else {
+      console.error('tweet_user data does not exist!');
+    }
+  });
+
+  socket.on('tweet_user', function (data) {
+    if (data) {
+      if (typeof data === 'object') {
+        for (var i in data) {
+          var user = data[i];
+          if (user.id) {
+            window.tweetUsers[user.id] = user;
+            addTweetUser(user);
+          } else {
+            console.error('tweet_user data has no id!');
+            window.errorStack.push(user);
+          }
+        }
+      } else {
+        console.error('tweet_user data is not an object!');
+        window.errorStack.push(data);
+      }
+    } else {
+      console.error('tweet_user data does not exist!');
+    }
   });
 
   socket.on('user joined', function (data) {

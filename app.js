@@ -126,6 +126,16 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
       // when the client emits 'new message', this listens and executes
 
       var calls = {};
+      socket.on('tweet_user', function (id) {
+        console.log("Tweet user called with: ");
+        console.log(id);
+        apis.twitUser(id, function (err, userJSON) {
+          if (err) console.log(err);
+          console.log(JSON.stringify(userJSON));
+          socket.emit('tweet_user', userJSON);
+        });
+      });
+
       socket.on('new message', function (data) {
 
         var functions = {
@@ -136,9 +146,7 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
             console.log(calls);
 
             if (data.trim() === "") {
-
               q = calls;
-
               query = new Query(q);
               console.log(colors.yellow(JSON.stringify(query)));
             } else {
@@ -214,7 +222,7 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
 
                     if (calls) {
                       if (args.max_id) {
-                         calls.max_id = args.max_id;
+                         calls.maxId = args.max_id;
                       } else {
                         throw new Error('no max id object');
                       }
@@ -238,9 +246,9 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
                       args.eachItem(args, function (err, model) {
                         debug.yellow('eachItem.callback =>');
                         args.collection.push(model._id);
-                        if (calls.max_id > model.id) {
+                        if (calls.maxId > model.id) {
                           console.log('swapping');
-                          calls.max_id = model.id;
+                          calls.maxId = model.id;
                         }
                         args.sem.signal();
                       });
@@ -260,7 +268,9 @@ mongoose.connect('mongodb://localhost/test_dev', function(err) {
             });
           }
         };
-        if (data.indexOf("query:") > -1) {
+
+
+        if ((data.indexOf("query:") && data.indexOf("user:")) > -1) {
           functions[data.split(':')[0]](data.split(':')[1]);
         } else {
           functions.query(data);
